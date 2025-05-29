@@ -33,7 +33,7 @@ func (p *Parser) Parse() map[string]string {
 			if prev[0] != nil {
 				prev[1] = &tkn
 			}
-		case tknValue:
+		case tknValue, tknRawValue:
 			if prev[0] != nil && prev[1] != nil {
 				pairs[prev[0].Literal] = tkn.Literal
 				break
@@ -72,7 +72,7 @@ loop:
 			}
 
 			valTkn := p.lex.NextToken()
-			if valTkn.Type != tknValue {
+			if valTkn.Type != tknValue && valTkn.Type != tknRawValue {
 				return nil, fmt.Errorf("Unexpected token %s", valTkn)
 			}
 

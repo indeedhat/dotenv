@@ -7,33 +7,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var stringTestCases = []struct {
-	subject  String
-	env      map[string]string
-	fallback []string
-	expected string
-}{
+type envarTestCase[S EnVar[T], T any] struct {
+	subject        S
+	env            map[string]string
+	fallback       []T
+	getExpected    T
+	lookupExpected T
+}
+
+var stringTestCases = []envarTestCase[String, string]{
 	{
-		String("VALID"),
-		map[string]string{"VALID": "valid"},
-		[]string{"fallback value"},
-		"valid",
+		subject:        String("VALID"),
+		env:            map[string]string{"VALID": "valid"},
+		fallback:       []string{"fallback value"},
+		getExpected:    "valid",
+		lookupExpected: "valid",
 	},
 	{
-		String("FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		[]string{"fallback value"},
-		"fallback value",
+		subject:     String("FALLBACK_EMPTY"),
+		env:         map[string]string{"FALLBACK_EMPTY": ""},
+		fallback:    []string{"fallback value"},
+		getExpected: "fallback value",
 	},
 	{
-		String("NO_FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		nil,
-		"",
+		subject:        String("FALLBACK_UNSET"),
+		fallback:       []string{"fallback value"},
+		getExpected:    "fallback value",
+		lookupExpected: "fallback value",
+	},
+	{
+		subject: String("NO_FALLBACK_EMPTY"),
+		env:     map[string]string{"NO_FALLBACK_EMPTY": ""},
+	},
+	{
+		subject: String("NO_FALLBACK_UNSET"),
 	},
 }
 
-func TestString(t *testing.T) {
+func TestStringGet(t *testing.T) {
 	for _, tc := range stringTestCases {
 		t.Run(string(tc.subject), func(t *testing.T) {
 			os.Clearenv()
@@ -41,62 +52,78 @@ func TestString(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			require.Equal(t, tc.expected, tc.subject.Get(tc.fallback...))
+			require.Equal(t, tc.getExpected, tc.subject.Get(tc.fallback...))
 		})
 	}
 }
 
-var intTestCases = []struct {
-	subject  Int
-	env      map[string]string
-	fallback []int
-	expected int
-}{
+func TestStringLookup(t *testing.T) {
+	for _, tc := range stringTestCases {
+		t.Run(string(tc.subject), func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tc.env {
+				os.Setenv(k, v)
+			}
+
+			require.Equal(t, tc.lookupExpected, tc.subject.Lookup(tc.fallback...))
+		})
+	}
+}
+
+var intTestCases = []envarTestCase[Int, int]{
 	{
-		Int("VALID"),
-		map[string]string{"VALID": "100"},
-		[]int{200},
-		100,
+		subject:        Int("VALID"),
+		env:            map[string]string{"VALID": "100"},
+		fallback:       []int{200},
+		getExpected:    100,
+		lookupExpected: 100,
 	},
 	{
-		Int("FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		[]int{200},
-		200,
+		subject:     Int("FALLBACK_EMPTY"),
+		env:         map[string]string{"FALLBACK_EMPTY": ""},
+		fallback:    []int{200},
+		getExpected: 200,
 	},
 	{
-		Int("NO_FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		nil,
-		0,
+		subject:        Int("FALLBACK_UNSET"),
+		fallback:       []int{200},
+		getExpected:    200,
+		lookupExpected: 200,
 	},
 	{
-		Int("NOT_INT"),
-		map[string]string{"NOT_INT": "is a string"},
-		nil,
-		0,
+		subject: Int("NO_FALLBACK_EMYTY"),
+		env:     map[string]string{"NO_FALLBACK_EMYTY": ""},
 	},
 	{
-		Int("NOT_INT_FALLBACK"),
-		map[string]string{"NOT_INT_FALLBACK": "invalid"},
-		[]int{123},
-		123,
+		subject: Int("NO_FALLBACK_UNSET"),
 	},
 	{
-		Int("HEX"),
-		map[string]string{"HEX": "0xF"},
-		[]int{123},
-		15,
+		subject: Int("NOT_INT"),
+		env:     map[string]string{"NOT_INT": "is a string"},
 	},
 	{
-		Int("BIN"),
-		map[string]string{"BIN": "0b10000000"},
-		[]int{123},
-		128,
+		subject:     Int("NOT_INT_FALLBACK"),
+		env:         map[string]string{"NOT_INT_FALLBACK": "invalid"},
+		fallback:    []int{123},
+		getExpected: 123,
+	},
+	{
+		subject:        Int("HEX"),
+		env:            map[string]string{"HEX": "0xF"},
+		fallback:       []int{123},
+		getExpected:    15,
+		lookupExpected: 15,
+	},
+	{
+		subject:        Int("BIN"),
+		env:            map[string]string{"BIN": "0b10000000"},
+		fallback:       []int{123},
+		getExpected:    128,
+		lookupExpected: 128,
 	},
 }
 
-func TestInt(t *testing.T) {
+func TestIntGet(t *testing.T) {
 	for _, tc := range intTestCases {
 		t.Run(string(tc.subject), func(t *testing.T) {
 			os.Clearenv()
@@ -104,56 +131,71 @@ func TestInt(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			require.Equal(t, tc.expected, tc.subject.Get(tc.fallback...))
+			require.Equal(t, tc.getExpected, tc.subject.Get(tc.fallback...))
 		})
 	}
 }
 
-var floatTestCases = []struct {
-	subject  Float
-	env      map[string]string
-	fallback []float64
-	expected float64
-}{
+func TestIntLookup(t *testing.T) {
+	for _, tc := range intTestCases {
+		t.Run(string(tc.subject), func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tc.env {
+				os.Setenv(k, v)
+			}
+
+			require.Equal(t, tc.lookupExpected, tc.subject.Lookup(tc.fallback...))
+		})
+	}
+}
+
+var floatTestCases = []envarTestCase[Float, float64]{
 	{
-		Float("VALID"),
-		map[string]string{"VALID": "100.5"},
-		[]float64{200},
-		100.5,
+		subject:        Float("VALID"),
+		env:            map[string]string{"VALID": "100.5"},
+		fallback:       []float64{200},
+		getExpected:    100.5,
+		lookupExpected: 100.5,
 	},
 	{
-		Float("FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		[]float64{200},
-		200,
+		subject:     Float("FALLBACK_EMPTY"),
+		env:         map[string]string{"FALLBACK_EMPTY": ""},
+		fallback:    []float64{200},
+		getExpected: 200,
 	},
 	{
-		Float("NO_FALLBACK"),
-		map[string]string{"VALID": "valid"},
-		nil,
-		0,
+		subject:        Float("FALLBACK_UNSET"),
+		fallback:       []float64{200},
+		getExpected:    200,
+		lookupExpected: 200,
 	},
 	{
-		Float("NOT_FLOAT"),
-		map[string]string{"NOT_FLOAT": "is a string"},
-		nil,
-		0,
+		subject: Float("NO_FALLBACK_EMPTY"),
+		env:     map[string]string{"NO_FALLBACK_EMPTY": ""},
 	},
 	{
-		Float("NOT_FLOAT_FALLBACK"),
-		map[string]string{"NOT_FLOAT_FALLBACK": "invalid"},
-		[]float64{123.33},
-		123.33,
+		subject: Float("NO_FALLBACK_UNSET"),
 	},
 	{
-		Float("EXPONENT"),
-		map[string]string{"EXPONENT": "1e6"},
-		[]float64{123},
-		1_000_000,
+		subject: Float("NOT_FLOAT"),
+		env:     map[string]string{"NOT_FLOAT": "is a string"},
+	},
+	{
+		subject:     Float("NOT_FLOAT_FALLBACK"),
+		env:         map[string]string{"NOT_FLOAT_FALLBACK": "invalid"},
+		fallback:    []float64{123.33},
+		getExpected: 123.33,
+	},
+	{
+		subject:        Float("EXPONENT"),
+		env:            map[string]string{"EXPONENT": "1e6"},
+		fallback:       []float64{123},
+		getExpected:    1_000_000,
+		lookupExpected: 1_000_000,
 	},
 }
 
-func TestFloat(t *testing.T) {
+func TestFloatGet(t *testing.T) {
 	for _, tc := range floatTestCases {
 		t.Run(string(tc.subject), func(t *testing.T) {
 			os.Clearenv()
@@ -161,56 +203,84 @@ func TestFloat(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			require.Equal(t, tc.expected, tc.subject.Get(tc.fallback...))
+			require.Equal(t, tc.getExpected, tc.subject.Get(tc.fallback...))
 		})
 	}
 }
 
-var boolTestCases = []struct {
-	subject  Bool
-	env      map[string]string
-	fallback []bool
-	expected bool
-}{
+func TestFloatLookup(t *testing.T) {
+	for _, tc := range floatTestCases {
+		t.Run(string(tc.subject), func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tc.env {
+				os.Setenv(k, v)
+			}
+
+			require.Equal(t, tc.lookupExpected, tc.subject.Lookup(tc.fallback...))
+		})
+	}
+}
+
+var boolTestCases = []envarTestCase[Bool, bool]{
 	{
-		Bool("TRUE"),
-		map[string]string{"TRUE": "true"},
-		[]bool{false},
-		true,
+		subject:        Bool("TRUE"),
+		env:            map[string]string{"TRUE": "true"},
+		fallback:       []bool{false},
+		getExpected:    true,
+		lookupExpected: true,
 	},
 	{
-		Bool("FALSE"),
-		map[string]string{"FALSE": "false"},
-		[]bool{true},
-		false,
+		subject:        Bool("FALSE"),
+		env:            map[string]string{"FALSE": "false"},
+		fallback:       []bool{true},
+		getExpected:    false,
+		lookupExpected: false,
 	},
 	{
-		Bool("FALLBACK"),
-		map[string]string{},
-		[]bool{true},
-		true,
+		subject:        Bool("FALLBACK_UNSET"),
+		env:            map[string]string{},
+		fallback:       []bool{true},
+		getExpected:    true,
+		lookupExpected: true,
 	},
 	{
-		Bool("NO_FALLBACK"),
-		map[string]string{},
-		nil,
-		false,
+		subject:     Bool("FALLBACK_EMPTY"),
+		env:         map[string]string{"FALLBACK_EMPTY": ""},
+		fallback:    []bool{true},
+		getExpected: true,
 	},
 	{
-		Bool("INT_TRUE"),
-		map[string]string{"INT_TRUE": "1"},
-		nil,
-		true,
+		subject: Bool("NO_FALLBACK_UNSET"),
 	},
 	{
-		Bool("INT_FALSE"),
-		map[string]string{"INT_FALSE": "0"},
-		nil,
-		false,
+		subject: Bool("NO_FALLBACK_EMPTY"),
+		env:     map[string]string{"NO_FALLBACK_EMPTY": ""},
+	},
+	{
+		subject:        Bool("INT_TRUE"),
+		env:            map[string]string{"INT_TRUE": "1"},
+		getExpected:    true,
+		lookupExpected: true,
+	},
+	{
+		subject:        Bool("INT_FALSE"),
+		env:            map[string]string{"INT_FALSE": "0"},
+		getExpected:    false,
+		lookupExpected: false,
+	},
+	{
+		subject: Bool("NOT_A_BOOL"),
+		env:     map[string]string{"NOT_A_BOOL": "something"},
+	},
+	{
+		subject:     Bool("NOT_A_BOOL_FALLBACK"),
+		env:         map[string]string{"NOT_A_BOOL_FALLBACK": "something"},
+		fallback:    []bool{true},
+		getExpected: true,
 	},
 }
 
-func TestBool(t *testing.T) {
+func TestBoolGet(t *testing.T) {
 	for _, tc := range boolTestCases {
 		t.Run(string(tc.subject), func(t *testing.T) {
 			os.Clearenv()
@@ -218,7 +288,20 @@ func TestBool(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			require.Equal(t, tc.expected, tc.subject.Get(tc.fallback...))
+			require.Equal(t, tc.getExpected, tc.subject.Get(tc.fallback...))
+		})
+	}
+}
+
+func TestBoolLookup(t *testing.T) {
+	for _, tc := range boolTestCases {
+		t.Run(string(tc.subject), func(t *testing.T) {
+			os.Clearenv()
+			for k, v := range tc.env {
+				os.Setenv(k, v)
+			}
+
+			require.Equal(t, tc.lookupExpected, tc.subject.Lookup(tc.fallback...))
 		})
 	}
 }

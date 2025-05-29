@@ -7,6 +7,7 @@ import (
 
 type EnVar[T any] interface {
 	Get(...T) T
+	Lookup(...T) T
 }
 
 type String string
@@ -16,6 +17,16 @@ func (k String) Get(fallback ...string) string {
 	val := os.Getenv(string(k))
 
 	if val == "" && len(fallback) > 0 {
+		return fallback[0]
+	}
+
+	return val
+}
+
+func (k String) Lookup(fallback ...string) string {
+	val, ok := os.LookupEnv(string(k))
+
+	if !ok && len(fallback) > 0 {
 		return fallback[0]
 	}
 
@@ -42,6 +53,17 @@ func (k Int) Get(fallback ...int) int {
 	return int(parsed)
 }
 
+func (k Int) Lookup(fallback ...int) int {
+	val, ok := os.LookupEnv(string(k))
+
+	if !ok && len(fallback) > 0 {
+		return fallback[0]
+	}
+
+	parsed, _ := strconv.ParseInt(val, 0, 0)
+	return int(parsed)
+}
+
 var _ EnVar[int] = (*Int)(nil)
 
 type Float string
@@ -62,6 +84,17 @@ func (k Float) Get(fallback ...float64) float64 {
 	return parsed
 }
 
+func (k Float) Lookup(fallback ...float64) float64 {
+	val, ok := os.LookupEnv(string(k))
+
+	if !ok && len(fallback) > 0 {
+		return fallback[0]
+	}
+
+	parsed, _ := strconv.ParseFloat(val, 64)
+	return parsed
+}
+
 var _ EnVar[float64] = (*Float)(nil)
 
 type Bool string
@@ -79,6 +112,17 @@ func (k Bool) Get(fallback ...bool) bool {
 		return fallback[0]
 	}
 
+	return parsed
+}
+
+func (k Bool) Lookup(fallback ...bool) bool {
+	val, ok := os.LookupEnv(string(k))
+
+	if !ok && len(fallback) > 0 {
+		return fallback[0]
+	}
+
+	parsed, _ := strconv.ParseBool(val)
 	return parsed
 }
 

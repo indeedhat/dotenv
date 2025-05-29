@@ -7,13 +7,15 @@ import (
 	"unicode"
 )
 
-const runeEOF = 0
+// unicode DEL is pretty unlikely to be present in a .env file
+const runeEOF = 0x7f
 
 const (
 	tknExport     = "EXPORT"
 	tknIdentifier = "IDENT"
 	tknEquals     = "EQUALS"
 	tknValue      = "VALUE"
+	tknRawValue   = "RAW_VALUE"
 	tknComment    = "COMMENT"
 	tknEOL        = "EOL"
 	tknEOF        = "EOF"
@@ -108,6 +110,9 @@ func (l *lexer) NextToken() token {
 			if !ok {
 				return tkn.With(tknIllegal, str)
 			}
+			if l.char == '\'' {
+				return tkn.With(tknRawValue, str)
+			}
 			return tkn.With(tknValue, str)
 		case 'e':
 			if l.peekIdentifier() == "export" {
@@ -142,7 +147,7 @@ func (l *lexer) tkn() token {
 
 func (l *lexer) readRune() {
 	if l.readPos >= len(l.data) {
-		l.char = 0
+		l.char = runeEOF
 	} else {
 		l.char = l.data[l.readPos]
 	}
@@ -154,7 +159,7 @@ func (l *lexer) readRune() {
 
 func (l *lexer) peekRune() rune {
 	if l.readPos >= len(l.data) {
-		return 0
+		return runeEOF
 	}
 
 	return l.data[l.readPos]
@@ -191,12 +196,12 @@ func (l *lexer) readQuotedString(terminator rune) (string, bool) {
 	for {
 		curRune := l.data[l.pos]
 		peekRune := l.peekRune()
-		// if we dont find a closing " then its an invalid string
+		// if we dont find a closing quote then its an invalid string
 		if peekRune == runeEOF {
 			return "", false
 		}
 
-		if curRune != '\\' || peekRune != '"' {
+		if curRune != '\\' || peekRune != terminator {
 			buf.WriteRune(curRune)
 		}
 
