@@ -34,12 +34,12 @@ func (k Int) Get(fallback ...int) int {
 		return fallback[0]
 	}
 
-	parsed, err := strconv.Atoi(val)
+	parsed, err := strconv.ParseInt(val, 0, 0)
 	if err != nil && len(fallback) > 0 {
 		return fallback[0]
 	}
 
-	return parsed
+	return int(parsed)
 }
 
 var _ EnVar[int] = (*Int)(nil)
