@@ -1,17 +1,39 @@
 package dotenv
 
+import "fmt"
+
 const (
-	TknExport     = "EXPORT"
-	TknIdentifier = "IDENT"
-	TknEquals     = "EQUALS"
-	TknValue      = "VALUE"
-	TknComment    = "COMMENT"
-	TknEOL        = "EOL"
-	TknEOF        = "EOF"
-	TknIllegal    = "ILLEGAL"
+	tknExport     = "EXPORT"
+	tknIdentifier = "IDENT"
+	tknEquals     = "EQUALS"
+	tknValue      = "VALUE"
+	tknComment    = "COMMENT"
+	tknEOL        = "EOL"
+	tknEOF        = "EOF"
+	tknIllegal    = "ILLEGAL"
 )
 
-type Token struct {
+type token struct {
+	Line    int
+	Pos     int
 	Type    string
 	Literal string
+}
+
+func (t token) With(typ, value string) token {
+	return token{
+		Line:    t.Line,
+		Pos:     t.Pos,
+		Type:    typ,
+		Literal: value,
+	}
+}
+
+func (t token) String() string {
+	return fmt.Sprintf("%s value=%s line=%d pos=%d",
+		t.Type,
+		t.Literal,
+		t.Line,
+		t.Pos,
+	)
 }

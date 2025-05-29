@@ -8,7 +8,7 @@ import (
 
 const runeEOF = 0
 
-type Lexer struct {
+type lexer struct {
 	data []rune
 
 	pos     int
@@ -17,17 +17,17 @@ type Lexer struct {
 
 	line      int
 	linePos   int
-	prevToken Token
+	prevToken token
 }
 
-func NewLexer(data string) *Lexer {
-	l := &Lexer{data: []rune(data)}
+func newLexer(data string) *lexer {
+	l := &lexer{data: []rune(data)}
 	l.readRune()
 
 	return l
 }
 
-func (l *Lexer) NextToken() Token {
+func (l *lexer) NextToken() token {
 	var skipRead bool
 	defer func() {
 		if !skipRead {
@@ -35,7 +35,7 @@ func (l *Lexer) NextToken() Token {
 		}
 	}()
 
-	tkn := (func() Token {
+	tkn := (func() token {
 	skip:
 		switch l.char {
 		case '\r':
@@ -43,46 +43,52 @@ func (l *Lexer) NextToken() Token {
 				l.readRune()
 				goto skip
 			}
+
+			tkn := l.tkn().With(tknEOL, "")
 			l.line++
 			l.linePos = 0
-			return Token{TknEOL, ""}
+
+			return tkn
 		case '\n':
+			tkn := l.tkn().With(tknEOL, "")
 			l.line++
 			l.linePos = 0
-			return Token{TknEOL, ""}
+
+			return tkn
 		case '\t', '\v', '\f', ' ', 0x85, 0xA0:
 			l.readRune()
 			goto skip
 		case runeEOF:
-			return Token{TknEOF, ""}
+			return l.tkn().With(tknEOF, "")
 		case '#':
 			skipRead = true
-			return Token{TknComment, l.readComment()}
+			return l.tkn().With(tknComment, l.readComment())
 		case '=':
-			return Token{TknEquals, "="}
+			return l.tkn().With(tknEquals, "=")
 		case '\'', '"':
+			tkn := l.tkn()
 			str, ok := l.readQuotedString(l.char)
 			if !ok {
-				return Token{TknIllegal, str}
+				return tkn.With(tknIllegal, str)
 			}
-			return Token{TknValue, str}
+			return tkn.With(tknValue, str)
 		case 'e':
 			if l.peekIdentifier() == "export" {
-				l.readIdentifier()
-				return Token{TknExport, "export"}
+				defer l.readIdentifier()
+				return l.tkn().With(tknExport, "export")
 			}
 			fallthrough
 		default:
-			if l.prevToken.Type != TknEquals {
+			if l.prevToken.Type != tknEquals {
 				if !isIdentRune(l.char) {
-					return Token{TknIllegal, string(l.char)}
+					return l.tkn().With(tknIllegal, string(l.char))
 				}
 
-				return Token{TknIdentifier, l.readIdentifier()}
+				return l.tkn().With(tknIdentifier, l.readIdentifier())
 			}
 
 			skipRead = true
-			return Token{TknValue, l.readUnquotedString()}
+			return l.tkn().With(tknValue, l.readUnquotedString())
 		}
 	})()
 
@@ -90,7 +96,14 @@ func (l *Lexer) NextToken() Token {
 	return tkn
 }
 
-func (l *Lexer) readRune() {
+func (l *lexer) tkn() token {
+	return token{
+		Line: l.line,
+		Pos:  l.linePos,
+	}
+}
+
+func (l *lexer) readRune() {
 	if l.readPos >= len(l.data) {
 		l.char = 0
 	} else {
@@ -102,7 +115,7 @@ func (l *Lexer) readRune() {
 	l.linePos++
 }
 
-func (l *Lexer) peekRune() rune {
+func (l *lexer) peekRune() rune {
 	if l.readPos >= len(l.data) {
 		return 0
 	}
@@ -110,7 +123,7 @@ func (l *Lexer) peekRune() rune {
 	return l.data[l.readPos]
 }
 
-func (l *Lexer) readComment() string {
+func (l *lexer) readComment() string {
 	// skip the #
 	l.readRune()
 
@@ -135,7 +148,7 @@ func (l *Lexer) readComment() string {
 	return strings.TrimSpace(buf.String())
 }
 
-func (l *Lexer) readQuotedString(terminator rune) (string, bool) {
+func (l *lexer) readQuotedString(terminator rune) (string, bool) {
 	var buf bytes.Buffer
 
 	for {
@@ -169,7 +182,7 @@ func (l *Lexer) readQuotedString(terminator rune) (string, bool) {
 	return buf.String()[1:], true
 }
 
-func (l *Lexer) readUnquotedString() string {
+func (l *lexer) readUnquotedString() string {
 	var buf bytes.Buffer
 
 	for {
@@ -195,7 +208,7 @@ func (l *Lexer) readUnquotedString() string {
 	return strings.TrimSpace(buf.String())
 }
 
-func (l *Lexer) readIdentifier() string {
+func (l *lexer) readIdentifier() string {
 	pos := l.pos
 
 	for isIdentRune(l.peekRune(), true) {
@@ -205,14 +218,18 @@ func (l *Lexer) readIdentifier() string {
 	return string(l.data[pos:l.readPos])
 }
 
-func (l *Lexer) peekIdentifier() string {
+func (l *lexer) peekIdentifier() string {
 	pos := l.pos
 	readPos := l.readPos
+	linePos := l.linePos
+	line := l.line
 
 	ident := l.readIdentifier()
 
 	l.pos = pos
 	l.readPos = readPos
+	l.line = line
+	l.linePos = linePos
 
 	return ident
 }

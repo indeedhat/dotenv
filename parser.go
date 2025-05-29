@@ -1,24 +1,86 @@
 package dotenv
 
-const (
-	prefixComment     = `#`
-	prefixSingleQuote = `'`
-	prefixDoubleQuote = `"`
-	prefixExport      = `export`
+import (
+	"fmt"
 )
 
 type parser struct {
-	data []byte
-	pos  int
+	lex *lexer
 }
 
-func newParser(data []byte) *parser {
+func newParser(l *lexer) *parser {
 	return &parser{
-		data: data,
-		pos:  0,
+		lex: l,
 	}
 }
 
-func (p *parser) parse() (map[string]string, error) {
-	return nil, nil
+func (p *parser) Parse() map[string]string {
+	pairs := make(map[string]string)
+
+	prev := make([]*token, 2)
+
+	for {
+		tkn := p.lex.NextToken()
+		if tkn.Type == tknEOF {
+			break
+		}
+
+		switch tkn.Type {
+		case tknIdentifier:
+			prev[0] = &tkn
+			prev[1] = nil
+		case tknEquals:
+			if prev[0] != nil {
+				prev[1] = &tkn
+			}
+		case tknValue:
+			if prev[0] != nil && prev[1] != nil {
+				pairs[prev[0].Literal] = tkn.Literal
+				break
+			}
+			fallthrough
+		default:
+			prev[0] = nil
+			prev[1] = nil
+		}
+	}
+
+	return pairs
+}
+
+func (p *parser) ParseStrict() (map[string]string, error) {
+	pairs := make(map[string]string)
+
+loop:
+	for {
+		tkn := p.lex.NextToken()
+		switch tkn.Type {
+		case tknEOF:
+			break loop
+		case tknComment, tknEOL:
+			// NB: these are all allowed on their own line and will be skipped
+		case tknExport:
+			tkn = p.lex.NextToken()
+			if tkn.Type != tknIdentifier {
+				return nil, fmt.Errorf("Unexpected token %s", tkn)
+			}
+			fallthrough
+		case tknIdentifier:
+			eqTkn := p.lex.NextToken()
+			if eqTkn.Type != tknEquals {
+				return nil, fmt.Errorf("Unexpected token %s", eqTkn)
+			}
+
+			valTkn := p.lex.NextToken()
+			if valTkn.Type != tknValue {
+				return nil, fmt.Errorf("Unexpected token %s", valTkn)
+			}
+
+			pairs[tkn.Literal] = valTkn.Literal
+		default:
+			return nil, fmt.Errorf("Unexpected token %s", tkn)
+		}
+	}
+
+	return pairs, nil
 }
