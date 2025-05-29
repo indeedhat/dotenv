@@ -4,17 +4,17 @@ import (
 	"fmt"
 )
 
-type parser struct {
+type Parser struct {
 	lex *lexer
 }
 
-func newParser(l *lexer) *parser {
-	return &parser{
+func newParser(l *lexer) *Parser {
+	return &Parser{
 		lex: l,
 	}
 }
 
-func (p *parser) Parse() map[string]string {
+func (p *Parser) Parse() map[string]string {
 	pairs := make(map[string]string)
 
 	prev := make([]*token, 2)
@@ -48,7 +48,7 @@ func (p *parser) Parse() map[string]string {
 	return pairs
 }
 
-func (p *parser) ParseStrict() (map[string]string, error) {
+func (p *Parser) ParseStrict() (map[string]string, error) {
 	pairs := make(map[string]string)
 
 loop:

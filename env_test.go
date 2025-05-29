@@ -196,6 +196,18 @@ var boolTestCases = []struct {
 		nil,
 		false,
 	},
+	{
+		Bool("INT_TRUE"),
+		map[string]string{"INT_TRUE": "1"},
+		nil,
+		true,
+	},
+	{
+		Bool("INT_FALSE"),
+		map[string]string{"INT_FALSE": "0"},
+		nil,
+		false,
+	},
 }
 
 func TestBool(t *testing.T) {
