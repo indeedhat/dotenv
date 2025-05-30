@@ -7,6 +7,11 @@ import (
 type Parser struct {
 	lex *lexer
 }
+type ParseEntry struct {
+	Key   string
+	Value string
+	Raw   bool
+}
 
 func newParser(l *lexer) *Parser {
 	return &Parser{
@@ -14,8 +19,8 @@ func newParser(l *lexer) *Parser {
 	}
 }
 
-func (p *Parser) Parse() map[string]string {
-	pairs := make(map[string]string)
+func (p *Parser) Parse() []ParseEntry {
+	var pairs []ParseEntry
 
 	prev := make([]*token, 2)
 
@@ -33,10 +38,13 @@ func (p *Parser) Parse() map[string]string {
 			if prev[0] != nil {
 				prev[1] = &tkn
 			}
-		case tknValue, tknRawValue:
+		case tknValue, tknRawValue, tknComment, tknEOL, tknEOF:
 			if prev[0] != nil && prev[1] != nil {
-				pairs[prev[0].Literal] = tkn.Literal
-				break
+				if tkn.Type == tknValue || tkn.Type == tknRawValue {
+					pairs = append(pairs, ParseEntry{prev[0].Literal, tkn.Literal, tkn.Type == tknRawValue})
+				} else {
+					pairs = append(pairs, ParseEntry{prev[0].Literal, "", false})
+				}
 			}
 			fallthrough
 		default:
@@ -48,8 +56,8 @@ func (p *Parser) Parse() map[string]string {
 	return pairs
 }
 
-func (p *Parser) ParseStrict() (map[string]string, error) {
-	pairs := make(map[string]string)
+func (p *Parser) ParseStrict() ([]ParseEntry, error) {
+	var pairs []ParseEntry
 
 loop:
 	for {
@@ -72,11 +80,14 @@ loop:
 			}
 
 			valTkn := p.lex.NextToken()
-			if valTkn.Type != tknValue && valTkn.Type != tknRawValue {
+			switch valTkn.Type {
+			case tknValue, tknRawValue:
+				pairs = append(pairs, ParseEntry{tkn.Literal, valTkn.Literal, valTkn.Type == tknRawValue})
+			case tknComment, tknEOL, tknEOF:
+				pairs = append(pairs, ParseEntry{tkn.Literal, "", false})
+			default:
 				return nil, fmt.Errorf("Unexpected token %s", valTkn)
 			}
-
-			pairs[tkn.Literal] = valTkn.Literal
 		default:
 			return nil, fmt.Errorf("Unexpected token %s", tkn)
 		}

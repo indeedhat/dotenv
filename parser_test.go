@@ -10,25 +10,40 @@ import (
 
 var parseTestCases = []struct {
 	file     string
-	expected map[string]string
+	expected []ParseEntry
 }{
 	{
 		"fixtures/basic.env",
-		map[string]string{
-			"DOUBLE_QUOTE":      "double quote",
-			"EXPORTED":          "data",
-			"HASH_WITH_COMMENT": "some#data",
-			"SINGLE_QUOTE":      "single quote",
-			"UNEXPORTED":        "data",
-			"UNQUOTED":          "unquoted data",
-			"WITH_COMMENT":      "some data",
+		[]ParseEntry{
+			{Key: "EXPORTED", Value: "data", Raw: false},
+			{Key: "UNEXPORTED", Value: "data", Raw: false},
+			{Key: "SINGLE_QUOTE", Value: "single quote", Raw: true},
+			{Key: "DOUBLE_QUOTE", Value: "double quote", Raw: false},
+			{Key: "UNQUOTED", Value: "unquoted data", Raw: false},
+			{Key: "WITH_COMMENT", Value: "some data", Raw: false},
+			{Key: "HASH_WITH_COMMENT", Value: "some#data", Raw: false},
 		},
 	},
 	{
 		"fixtures/broken.env",
-		map[string]string{
-			"EXPORTED": "data",
-			"FINAL":    "valid",
+		[]ParseEntry{
+			{Key: "EXPORTED", Value: "exported data", Raw: false},
+			{Key: "EMPTY", Value: "", Raw: false},
+			{Key: "EMPTY_WITH_COMMENT", Value: "", Raw: false},
+			{Key: "FINAL", Value: "valid", Raw: false},
+		},
+	},
+	{
+		"fixtures/replacement.env",
+		[]ParseEntry{
+			{Key: "VALUE", Value: "inserted", Raw: false},
+			{Key: "REPLACE", Value: "${VALUE}", Raw: false},
+			{Key: "REPLACE_SINGLE", Value: "${VALUE}", Raw: true},
+			{Key: "REPLACE_DOUBLE", Value: "${VALUE}", Raw: false},
+			{Key: "REPLACE_PARTIAL", Value: "partialy ${VALUE} value", Raw: false},
+			{Key: "REPLACE_ESCAPED", Value: "partialy \\${VALUE} value", Raw: false},
+			{Key: "REPLACE_FROM_BASIC", Value: "${HASH_WITH_COMMENT}", Raw: false},
+			{Key: "REPLACE_FROM_BROKEN", Value: "${EMPTY}", Raw: false},
 		},
 	},
 }
@@ -47,26 +62,40 @@ func TestParse(t *testing.T) {
 
 var parseStrictTestCases = []struct {
 	file          string
-	expected      map[string]string
+	expected      []ParseEntry
 	expectedError error
 }{
 	{
 		"fixtures/basic.env",
-		map[string]string{
-			"DOUBLE_QUOTE":      "double quote",
-			"EXPORTED":          "data",
-			"HASH_WITH_COMMENT": "some#data",
-			"SINGLE_QUOTE":      "single quote",
-			"UNEXPORTED":        "data",
-			"UNQUOTED":          "unquoted data",
-			"WITH_COMMENT":      "some data",
+		[]ParseEntry{
+			{Key: "EXPORTED", Value: "data", Raw: false},
+			{Key: "UNEXPORTED", Value: "data", Raw: false},
+			{Key: "SINGLE_QUOTE", Value: "single quote", Raw: true},
+			{Key: "DOUBLE_QUOTE", Value: "double quote", Raw: false},
+			{Key: "UNQUOTED", Value: "unquoted data", Raw: false},
+			{Key: "WITH_COMMENT", Value: "some data", Raw: false},
+			{Key: "HASH_WITH_COMMENT", Value: "some#data", Raw: false},
 		},
 		nil,
 	},
 	{
 		"fixtures/broken.env",
-		map[string]string{},
+		nil,
 		errors.New("Unexpected token IDENT value=some line=0 pos=6"),
+	},
+	{
+		"fixtures/replacement.env",
+		[]ParseEntry{
+			{Key: "VALUE", Value: "inserted", Raw: false},
+			{Key: "REPLACE", Value: "${VALUE}", Raw: false},
+			{Key: "REPLACE_SINGLE", Value: "${VALUE}", Raw: true},
+			{Key: "REPLACE_DOUBLE", Value: "${VALUE}", Raw: false},
+			{Key: "REPLACE_PARTIAL", Value: "partialy ${VALUE} value", Raw: false},
+			{Key: "REPLACE_ESCAPED", Value: "partialy \\${VALUE} value", Raw: false},
+			{Key: "REPLACE_FROM_BASIC", Value: "${HASH_WITH_COMMENT}", Raw: false},
+			{Key: "REPLACE_FROM_BROKEN", Value: "${EMPTY}", Raw: false},
+		},
+		nil,
 	},
 }
 
