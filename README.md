@@ -118,6 +118,14 @@ all that important when it comes to a library like this that will likely only be
 The test suite runs on my mid range laptop in 0.003 seconds though so i would say its fast enough
 for its use case
 
-### Its not really dependency free tho is it?!
+## Its not really dependency free tho is it?!
 Well no i do use [stretchr/testify](github.com/stretchr/testify) in the tests but the runtime library
-does not have any dependencies
+does not have any external dependencies
+
+## Is it spec complient?
+I'm not sure if there is actually an official spec for .env files, looking at various different
+libraries across languages there seems to be a number of defferences it is however capable of parsing
+what seems to be a common syntax between the libraries i have looked at.
+
+I may consider adding a full syntax guide but alternatively you can just look at the fixtures files
+to see the syntax that is being tested against

@@ -46,7 +46,11 @@ var lexNextTokenTestCases = []struct {
 			{Line: 6, Pos: 19, Type: tknValue, Literal: "some#data"},
 			{Line: 6, Pos: 29, Type: tknComment, Literal: "with a comment"},
 			{Line: 6, Pos: 45, Type: tknEOL, Literal: ""},
-			{Line: 7, Pos: 1, Type: tknEOF, Literal: ""},
+			{Line: 7, Pos: 1, Type: tknIdentifier, Literal: "MULTI_LINE"},
+			{Line: 7, Pos: 11, Type: tknEquals, Literal: "="},
+			{Line: 7, Pos: 12, Type: tknValue, Literal: "this\none has multiple\nlines"},
+			{Line: 7, Pos: 41, Type: tknEOL, Literal: ""},
+			{Line: 8, Pos: 1, Type: tknEOF, Literal: ""},
 		},
 	},
 	{

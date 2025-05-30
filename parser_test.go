@@ -22,6 +22,7 @@ var parseTestCases = []struct {
 			{Key: "UNQUOTED", Value: "unquoted data", Raw: false},
 			{Key: "WITH_COMMENT", Value: "some data", Raw: false},
 			{Key: "HASH_WITH_COMMENT", Value: "some#data", Raw: false},
+			{Key: "MULTI_LINE", Value: "this\none has multiple\nlines", Raw: false},
 		},
 	},
 	{
@@ -75,6 +76,7 @@ var parseStrictTestCases = []struct {
 			{Key: "UNQUOTED", Value: "unquoted data", Raw: false},
 			{Key: "WITH_COMMENT", Value: "some data", Raw: false},
 			{Key: "HASH_WITH_COMMENT", Value: "some#data", Raw: false},
+			{Key: "MULTI_LINE", Value: "this\none has multiple\nlines", Raw: false},
 		},
 		nil,
 	},
